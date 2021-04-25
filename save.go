@@ -29,6 +29,8 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 	writer.Write(uint16ToBytes(uint16(w)))
 	writer.Write(uint16ToBytes(uint16(h)))
 
+	writer.Write(uint16ToBytes(uint16(len(points))))
+
 	for _, p := range points {
 		writer.Write(uint16ToBytes(uint16(multAndRound(p.X, w))))
 		writer.Write(uint16ToBytes(uint16(multAndRound(p.Y, h))))
