@@ -31,9 +31,13 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 
 	writer.Write(uint16ToBytes(uint16(len(points))))
 
-	for _, p := range points {
+	pointsMap := make(map[normgeom.NormPoint]int)
+
+	for i, p := range points {
 		writer.Write(uint16ToBytes(uint16(multAndRound(p.X, w))))
 		writer.Write(uint16ToBytes(uint16(multAndRound(p.Y, h))))
+
+		pointsMap[p] = i
 	}
 
 	for _, d := range triangleData {
@@ -41,7 +45,7 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 		col := d.Color
 
 		for _, p := range tri {
-			writer.Write(uint16ToBytes(uint16(multAndRound(p.Y, h))))
+			writer.Write(uint16ToBytes(uint16(pointsMap[p])))
 		}
 
 		writer.Write([]byte{uint8(multAndRound(col.R, 255))})
