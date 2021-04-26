@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/binary"
+	"github.com/RH12503/Triangula/geom"
 	"github.com/RH12503/Triangula/image"
 	"github.com/RH12503/Triangula/normgeom"
 	"github.com/RH12503/Triangula/render"
@@ -31,13 +32,17 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 
 	writer.Write(uint16ToBytes(uint16(len(points))))
 
-	pointsMap := make(map[normgeom.NormPoint]int)
+	pointsMap := make(map[geom.Point]int)
 
 	for i, p := range points {
-		writer.Write(uint16ToBytes(uint16(multAndRound(p.X, w))))
-		writer.Write(uint16ToBytes(uint16(multAndRound(p.Y, h))))
+		point := geom.Point{
+			X: multAndRound(p.X, w),
+			Y: multAndRound(p.Y, h),
+		}
+		writer.Write(uint16ToBytes(uint16(point.X)))
+		writer.Write(uint16ToBytes(uint16(point.Y)))
 
-		pointsMap[p] = i
+		pointsMap[point] = i
 	}
 
 	for _, d := range triangleData {
@@ -45,7 +50,12 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 		col := d.Color
 
 		for _, p := range tri {
-			writer.Write(uint16ToBytes(uint16(pointsMap[p])))
+			point := geom.Point{
+				X: multAndRound(p.X, w),
+				Y: multAndRound(p.Y, h),
+			}
+
+			writer.Write(uint16ToBytes(uint16(pointsMap[point])))
 		}
 
 		writer.Write([]byte{uint8(multAndRound(col.R, 255))})
