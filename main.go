@@ -154,7 +154,7 @@ func processImage(imagePath string, numPoints int, timePerImage float64) error {
 
 	name := strings.TrimSuffix(imagePath, ext)
 
-	if err := SaveFile(name+".tri", algo.Best(), img); err != nil {
+	if err := SaveFile2(name+".tri", algo.Best(), img); err != nil {
 		pterm.Error.WithShowLineNumber(false).Printf("Cannot write %v\n", filename)
 		return err
 	}
