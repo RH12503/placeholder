@@ -9,17 +9,23 @@ function place() {
 
         let newImage = image.cloneNode();
 
+        let w = newImage.width;
+        let h = newImage.height;
+
         // Set up container div to hold placeholder
 
         let container = document.createElement("div");
         container.style.display = "inline-block";
+
+        container.style.width = w + "px"
+        container.style.height = h + "px"
 
         // Add a canvas above the div
 
         let canvas = document.createElement("canvas");
         canvas.style.position = "absolute";
         canvas.style.zIndex = 99;
-        canvas.style.transition = "opacity 1s";
+        canvas.style.transition = "opacity 0.7s";
 
         container.appendChild(canvas);
         container.appendChild(newImage);
@@ -38,19 +44,22 @@ function place() {
         xhr.onreadystatechange = () => {
             var buffer = xhr.response;
             if (buffer) {
+
+                // Load the original image
+                newImage.src = newImage.dataset.place;
+
+                newImage.onload = function () {
+                    canvas.style.opacity = "0"; // Hide the canvas after the image is loaded
+                }
+
                 var data = new DataView(buffer);
                 let width = data.getUint16(0, true);
                 let height = data.getUint16(2, true);
-
-                let numPoints = data.getUint16(4, true);
 
                 canvas.width = width;
                 canvas.height = height;
 
                 // Set width and height of placeholders
-
-                let w = newImage.width;
-                let h = newImage.height;
 
                 w = w || h * (width / height);
                 h = h || w * (height / width);
@@ -71,22 +80,63 @@ function place() {
                 var ctx = canvas.getContext("2d", {
                     alpha: false,
                 });
+                let dpi = window.devicePixelRatio;
+                if (dpi > 1) {
+                    canvas.width = width * dpi;
+                    canvas.height = height * dpi;
+                    ctx.scale(dpi, dpi);
+                }
 
                 ctx.clearRect(0, 0, width, height);
 
-                ctx.globalCompositeOperation = "lighter";
+                var triangles = [];
 
-                for (var i = 6 + numPoints * 4; i < buffer.byteLength; i += 9) {
-                    let points = [data.getUint16(i, true), data.getUint16(i + 2, true), data.getUint16(i + 4, true)];
+                triangles.push({
+                    triangle: [
+                        [data.getUint16(5, true), data.getUint16(7, true)],
+                        [data.getUint16(9, true), data.getUint16(11, true)],
+                        [data.getUint16(13, true), data.getUint16(15, true)],
+                    ],
+                    color: [data.getUint8(17, true), data.getUint8(18, true), data.getUint8(19, true)],
+                    remaining: data.getUint8(4, true),
+                });
 
-                    let triangle = [
-                        [data.getUint16(6 + points[0] * 4, true), data.getUint16(8 + points[0] * 4, true)],
-                        [data.getUint16(6 + points[1] * 4, true), data.getUint16(8 + points[1] * 4, true)],
-                        [data.getUint16(6 + points[2] * 4, true), data.getUint16(8 + points[2] * 4, true)],
-                    ];
-                    let color = [data.getUint8(i + 6, true), data.getUint8(i + 7, true), data.getUint8(i + 8, true)]
+                var current = 0;
 
-                    ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                for (var i = 20; i < buffer.byteLength; i += 8) {
+                    let face = data.getUint8(i, true) % 3
+
+                    let adjacent = triangles[current].triangle;
+
+                    triangles.push({
+                        triangle: [
+                            adjacent[face],
+                            adjacent[(face + 1) % 3],
+                            [data.getUint16(i + 1, true), data.getUint16(i + 3, true)],
+                        ].sort(function (a, b) {
+                            if (a[1] == b[1]) {
+                                return a[0] - b[0];
+                            }
+
+                            return a[1] - b[1];
+                        }),
+                        color: [data.getUint8(i + 5, true), data.getUint8(i + 6, true), data.getUint8(i + 7, true)],
+                        remaining: Math.floor(data.getUint8(i, true) / 3),
+                    });
+
+                    triangles[current].remaining--;
+                    while (triangles[current] && triangles[current].remaining == 0) {
+                        current++;
+                    }
+                }
+
+                for (var i = 0; i < triangles.length; i++) {
+                    let triangle = triangles[i].triangle
+                    let color = triangles[i].color
+                    let rgb = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                    ctx.fillStyle = rgb;
+                    ctx.strokeStyle = rgb;
+                    ctx.lineWidth = 0.5;
 
                     ctx.beginPath();
                     ctx.moveTo(triangle[0][0], triangle[0][1]);
@@ -94,17 +144,11 @@ function place() {
                     ctx.lineTo(triangle[2][0], triangle[2][1]);
                     ctx.closePath();
                     ctx.fill();
+                    ctx.stroke();
                 }
             }
         };
         xhr.send();
-
-        // Load the original image
-        newImage.src = newImage.dataset.place;
-
-        newImage.onload = function () {
-            canvas.style.opacity = "0"; // Hide the canvas after the image is loaded
-        }
 
     }
 }

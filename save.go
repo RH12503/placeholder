@@ -53,12 +53,11 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 	visited[first] = true
 
 	notFirst := false
-	c := 0
+
 	for len(active) > 0 {
 		index := active[0]
 		current := triangles[index]
 		active = active[1:]
-		c++
 
 		n := 0
 		for i, b := range triangles {
