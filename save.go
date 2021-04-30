@@ -13,114 +13,17 @@ import (
 	"sort"
 )
 
-func SaveFile2(filepath string, points normgeom.NormPointGroup, image image.Data) error {
+func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data) error {
 	w, h := image.Size()
 
 	triangles := triangulation.Triangulate(points, w, h)
-	distances := make([]int, len(triangles))
-	//triangleData := render.TrianglesOnImage(triangles, image)
+	renderData := render.TrianglesOnImage(triangles, image)
 
-	for i := range distances {
-		distances[i] = -1
-	}
+	sortTriangles(triangles)
 
-	layer := 0
 	var active []int
-	visited := make(map[geom.Triangle]bool)
-
-	for i, t := range triangles {
-		n := 0
-		for _, b := range triangles {
-			if adjacent(t, b) {
-				n++
-			}
-		}
-
-		if n != 3 {
-			active = append(active, i)
-			distances[i] = layer
-			visited[t] = true
-		}
-	}
-
-	var nextActive []int
-
-	for len(visited) < len(triangles) {
-		layer++
-
-		for len(active) > 0 {
-			current := active[0]
-			active = active[1:]
-
-			for i, t := range triangles {
-				if adjacent(t, triangles[current]) {
-					if !visited[t] {
-						nextActive = append(nextActive, i)
-						distances[i] = layer
-						visited[t] = true
-					}
-				}
-			}
-		}
-		active, nextActive = nextActive, active
-	}
-
-	tris := make([]struct {
-		t    geom.Triangle
-		dist int
-	}, len(triangles))
-
-	for i := range tris {
-		tris[i] = struct {
-			t    geom.Triangle
-			dist int
-		}{t: triangles[i], dist: distances[i]}
-	}
-
-	sort.Slice(tris, func(i, j int) bool {
-		return tris[i].dist < tris[j].dist
-	})
-
-	visited = make(map[geom.Triangle]bool)
-
-	current := tris[0]
-
-	var path []struct {
-		tri struct {
-			t    geom.Triangle
-			dist int
-		}
-		b int
-	}
-
-Outer:
-	for len(visited) < len(triangles) {
-
-		visited[current.t] = true
-
-		for _, t := range tris {
-			if adjacent(current.t, t.t) && !visited[t.t] {
-				current = t
-				path = append(path, struct {
-					tri struct {
-						t    geom.Triangle
-						dist int
-					}
-					b int
-				}{tri: current, b: len(path) - 1})
-				continue Outer
-			}
-		}
-		current = path[path[len(path)-1].b].tri
-		path = append(path, struct {
-			tri struct {
-				t    geom.Triangle
-				dist int
-			}
-			b int
-		}{tri: current, b: path[len(path)-1].b})
-
-	}
+	visited := make(map[int]bool)
+	faces := make(map[int]faceData)
 
 	file, err := os.Create(filepath)
 	defer file.Close()
@@ -134,103 +37,115 @@ Outer:
 	writer.Write(uint16ToBytes(uint16(w)))
 	writer.Write(uint16ToBytes(uint16(h)))
 
-	/*for _, d := range triangleData {
-		tri := d.Triangle.Points
-		col := d.Color
+	first := 0
 
-		for _, p := range tri {
-			point := geom.Point{
-				X: multAndRound(p.X, w),
-				Y: multAndRound(p.Y, h),
+	writer.Write([]byte{uint8(numberAdjacent(triangles[first], triangles))})
+	for _, p := range triangles[first].Points {
+		writer.Write(uint16ToBytes(uint16(p.X)))
+		writer.Write(uint16ToBytes(uint16(p.Y)))
+	}
+	col := renderData[first].Color
+	writer.Write([]byte{uint8(multAndRound(col.R, 255))})
+	writer.Write([]byte{uint8(multAndRound(col.G, 255))})
+	writer.Write([]byte{uint8(multAndRound(col.B, 255))})
+
+	active = append(active, first)
+	visited[first] = true
+
+	notFirst := false
+	c := 0
+	for len(active) > 0 {
+		index := active[0]
+		current := triangles[index]
+		active = active[1:]
+		c++
+
+		n := 0
+		for i, b := range triangles {
+			if adj, a, b := adjacent(current, b); adj && !visited[i] {
+				active = append(active, i)
+				visited[i] = true
+				faces[i] = faceData{a: a, b: b}
+				n++
 			}
-
-			writer.Write(uint16ToBytes(uint16(pointsMap[point])))
 		}
 
-		writer.Write([]byte{uint8(multAndRound(col.R, 255))})
-		writer.Write([]byte{uint8(multAndRound(col.G, 255))})
-		writer.Write([]byte{uint8(multAndRound(col.B, 255))})
-	}
+		if notFirst {
+			col := renderData[index].Color
+			writer.Write([]byte{uint8(3*n + faces[index].a)})
 
-	writer.Flush()*/
+			v := 0
+			if faces[index].b == 2 {
+				v = 1
+			} else if faces[index].b == 0 {
+				v = 2
+			}
+
+			writer.Write(uint16ToBytes(uint16(current.Points[v].X)))
+			writer.Write(uint16ToBytes(uint16(current.Points[v].Y)))
+
+			writer.Write([]byte{uint8(multAndRound(col.R, 255))})
+			writer.Write([]byte{uint8(multAndRound(col.G, 255))})
+			writer.Write([]byte{uint8(multAndRound(col.B, 255))})
+		}
+
+		notFirst = true
+	}
+	writer.Flush()
 
 	return nil
 }
 
-func adjacent(a, b geom.Triangle) bool {
-	common := 0
+func sortTriangles(triangles []geom.Triangle) {
+	for t := range triangles {
+		sort.Slice(triangles[t].Points[:], func(i, j int) bool {
+			if triangles[t].Points[i].Y == triangles[t].Points[j].Y {
+				return triangles[t].Points[i].X < triangles[t].Points[j].X
+			}
 
-	for _, pA := range a.Points {
-		for _, pB := range b.Points {
+			return triangles[t].Points[i].Y < triangles[t].Points[j].Y
+		})
+	}
+}
+
+func numberAdjacent(triangle geom.Triangle, triangles []geom.Triangle) int {
+	n := 0
+	for _, b := range triangles {
+		if adj, _, _ := adjacent(triangle, b); adj {
+			n++
+		}
+	}
+	return n
+}
+
+func adjacent(a, b geom.Triangle) (bool, int, int) {
+	common := 0
+	sumA := 0
+	sumB := 0
+	for i, pA := range a.Points {
+		for j, pB := range b.Points {
 			if pA == pB {
+				sumA += i
+				sumB += j
 				common++
 			}
 		}
 	}
 
-	return common == 2
+	return common == 2, faceFromSum(sumA), faceFromSum(sumB)
 }
 
-func averageY(tri geom.Triangle) float64 {
-	y := tri.Points[0].Y + tri.Points[1].Y + tri.Points[2].Y
+func faceFromSum(sum int) int {
+	var face int
 
-	return float64(y) / 3
-}
-
-func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data) error {
-	w, h := image.Size()
-
-	triangles := triangulation.Triangulate(points, w, h)
-	triangleData := render.TrianglesOnImage(triangles, image)
-
-	file, err := os.Create(filepath)
-	defer file.Close()
-
-	if err != nil {
-		return err
+	if sum == 1 {
+		face = 0
+	} else if sum == 3 {
+		face = 1
+	} else if sum == 2 {
+		face = 2
 	}
-
-	writer := bufio.NewWriter(file)
-
-	writer.Write(uint16ToBytes(uint16(w)))
-	writer.Write(uint16ToBytes(uint16(h)))
-
-	writer.Write(uint16ToBytes(uint16(len(points))))
-
-	pointsMap := make(map[geom.Point]int)
-
-	for i, p := range points {
-		point := geom.Point{
-			X: multAndRound(p.X, w),
-			Y: multAndRound(p.Y, h),
-		}
-		writer.Write(uint16ToBytes(uint16(point.X)))
-		writer.Write(uint16ToBytes(uint16(point.Y)))
-
-		pointsMap[point] = i
-	}
-
-	for _, d := range triangleData {
-		tri := d.Triangle.Points
-		col := d.Color
-
-		for _, p := range tri {
-			point := geom.Point{
-				X: multAndRound(p.X, w),
-				Y: multAndRound(p.Y, h),
-			}
-
-			writer.Write(uint16ToBytes(uint16(pointsMap[point])))
-		}
-
-		writer.Write([]byte{uint8(multAndRound(col.R, 255))})
-		writer.Write([]byte{uint8(multAndRound(col.G, 255))})
-		writer.Write([]byte{uint8(multAndRound(col.B, 255))})
-	}
-
-	writer.Flush()
-
-	return nil
+	return face
 }
 
 func uint16ToBytes(num uint16) []byte {
@@ -241,4 +156,8 @@ func uint16ToBytes(num uint16) []byte {
 
 func multAndRound(v float64, m int) int {
 	return int(math.Round(v * float64(m)))
+}
+
+type faceData struct {
+	a, b int
 }
