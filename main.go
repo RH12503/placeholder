@@ -7,6 +7,7 @@ import (
 	imageData "github.com/RH12503/Triangula/image"
 	"github.com/RH12503/Triangula/mutation"
 	"github.com/RH12503/Triangula/normgeom"
+	"github.com/disintegration/imaging"
 	"github.com/pterm/pterm"
 	"github.com/urfave/cli/v2"
 	"image"
@@ -44,11 +45,17 @@ func main() {
 				Aliases:  []string{"p", "pts"},
 				Required: true,
 			},
+			&cli.UintFlag{
+				Name:    "max-size",
+				Usage:   "The maximum size in pixels to clamp the images to.",
+				Aliases: []string{"s", "ms"},
+			},
 		},
 		Action: func(c *cli.Context) error {
 			numPoints := int(c.Uint("points"))
 			timePerImage := c.Float64("time")
 			path := c.String("input")
+			maxSize := int(c.Uint("max-size"))
 
 			if !validPath(path) {
 				pterm.Error.WithShowLineNumber(false).Println("Invalid path")
@@ -78,7 +85,7 @@ func main() {
 				bar, _ := pterm.DefaultProgressbar.WithTotal(len(paths)).WithTitle("Processing images").Start()
 				processed := 0
 				for _, p := range paths {
-					err := processImage(p, numPoints, timePerImage)
+					err := processImage(p, numPoints, timePerImage, maxSize)
 					if err == nil {
 						processed++
 						pterm.Success.Printf("Processed %v!\n", filepath.Base(p))
@@ -88,12 +95,12 @@ func main() {
 				if processed == len(paths) {
 					pterm.Success.Println("All images processed!")
 				} else {
-					pterm.Warning.Printf("%v/%v images could not be processed!\n", len(paths) - processed, len(paths))
+					pterm.Warning.Printf("%v/%v images could not be processed!\n", len(paths)-processed, len(paths))
 				}
 
 			} else {
 				pterm.Info.Printf("Processing %v\n", filepath.Base(path))
-				err := processImage(path, numPoints, timePerImage)
+				err := processImage(path, numPoints, timePerImage, maxSize)
 				if err == nil {
 					pterm.Success.Printf("Processed %v!\n", filepath.Base(path))
 				}
@@ -110,7 +117,7 @@ func main() {
 
 }
 
-func processImage(imagePath string, numPoints int, timePerImage float64) error {
+func processImage(imagePath string, numPoints int, timePerImage float64, maxSize int) error {
 	file, err := os.Open(imagePath)
 
 	if err != nil {
@@ -118,18 +125,31 @@ func processImage(imagePath string, numPoints int, timePerImage float64) error {
 		return err
 	}
 
-	image, _, err := image.Decode(file)
+	imageFile, _, err := image.Decode(file)
 	file.Close()
+
+	var resizedImage image.Image
+
+	if maxSize != 0 {
+		dim := imageFile.Bounds().Max
+		if dim.X > dim.Y && dim.X > maxSize {
+			resizedImage = imaging.Resize(imageFile, maxSize, 0, imaging.Lanczos)
+		} else if dim.Y > dim.X && dim.Y > maxSize {
+			resizedImage = imaging.Resize(imageFile, 0, maxSize, imaging.Lanczos)
+		}
+	} else {
+		resizedImage = imageFile
+	}
 
 	if err != nil {
 		pterm.Error.WithShowLineNumber(false).Printf("Cannot decode %v\n", filepath.Base(imagePath))
 		return err
 	}
 
-	img := imageData.ToData(image)
+	img := imageData.ToData(resizedImage)
 
 	pointFactory := func() normgeom.NormPointGroup {
-		return (generator.RandomGenerator{}).Generate(numPoints)
+		return generator.RandomGenerator{}.Generate(numPoints)
 	}
 
 	evaluatorFactory := func(n int) evaluator.Evaluator {
@@ -154,7 +174,7 @@ func processImage(imagePath string, numPoints int, timePerImage float64) error {
 
 	name := strings.TrimSuffix(imagePath, ext)
 
-	if err := SaveFile(name+".tri", algo.Best(), img); err != nil {
+	if err := SaveFile(name+".tri", algo.Best(), imageData.ToData(imageFile)); err != nil {
 		pterm.Error.WithShowLineNumber(false).Printf("Cannot write %v\n", filename)
 		return err
 	}
