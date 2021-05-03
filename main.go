@@ -118,6 +118,7 @@ func main() {
 }
 
 func processImage(imagePath string, numPoints int, timePerImage float64, maxSize int) error {
+
 	file, err := os.Open(imagePath)
 
 	if err != nil {

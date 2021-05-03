@@ -14,6 +14,7 @@ import (
 )
 
 func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data) error {
+
 	w, h := image.Size()
 
 	triangles := triangulation.Triangulate(points, w, h)
@@ -24,6 +25,7 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 	var active []int
 	visited := make(map[int]bool)
 	faces := make(map[int]faceData)
+	parent := make(map[int]int)
 
 	file, err := os.Create(filepath)
 	defer file.Close()
@@ -65,6 +67,7 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 				active = append(active, i)
 				visited[i] = true
 				faces[i] = faceData{a: a, b: b}
+				parent[i] = index
 				n++
 			}
 		}
@@ -90,6 +93,7 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 
 		notFirst = true
 	}
+
 	writer.Flush()
 
 	return nil
