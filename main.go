@@ -129,7 +129,7 @@ func processImage(imagePath string, numPoints int, timePerImage float64, maxSize
 	imageFile, _, err := image.Decode(file)
 	file.Close()
 
-	var resizedImage image.Image
+	resizedImage := imageFile
 
 	if maxSize != 0 {
 		dim := imageFile.Bounds().Max
@@ -138,15 +138,12 @@ func processImage(imagePath string, numPoints int, timePerImage float64, maxSize
 		} else if dim.Y > dim.X && dim.Y > maxSize {
 			resizedImage = imaging.Resize(imageFile, 0, maxSize, imaging.Lanczos)
 		}
-	} else {
-		resizedImage = imageFile
 	}
 
 	if err != nil {
 		pterm.Error.WithShowLineNumber(false).Printf("Cannot decode %v\n", filepath.Base(imagePath))
 		return err
 	}
-
 	img := imageData.ToData(resizedImage)
 
 	pointFactory := func() normgeom.NormPointGroup {
