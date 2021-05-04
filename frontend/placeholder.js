@@ -35,7 +35,7 @@ function place() {
         image.style.backgroundSize = backgroundSize;
         image.style.opacity = "0";
         image.style.backgroundRepeat = "no-repeat";
-        image.style.transition = "background 1s, background-position 0s, background-size 0s";
+        image.style.cssText += "transition: background 1s, background-position 0s, background-size 0s !important;";
 
         var xhr = new XMLHttpRequest();
 
