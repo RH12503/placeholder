@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/binary"
+	"github.com/RH12503/Triangula/color"
 	"github.com/RH12503/Triangula/geom"
 	"github.com/RH12503/Triangula/image"
 	"github.com/RH12503/Triangula/normgeom"
@@ -36,15 +37,15 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 
 	writer := bufio.NewWriter(file)
 
-	writer.Write(uint16ToBytes(uint16(w)))
-	writer.Write(uint16ToBytes(uint16(h)))
+	binary.Write(writer, binary.LittleEndian, uint16(w))
+	binary.Write(writer, binary.LittleEndian, uint16(h))
 
 	first := 0
 
 	writer.Write([]byte{uint8(numberAdjacent(triangles[first], triangles))})
 	for _, p := range triangles[first].Points {
-		writer.Write(uint16ToBytes(uint16(p.X)))
-		writer.Write(uint16ToBytes(uint16(p.Y)))
+		binary.Write(writer, binary.LittleEndian, uint16(p.X))
+		binary.Write(writer, binary.LittleEndian, uint16(p.Y))
 	}
 	col := renderData[first].Color
 	writer.Write([]byte{uint8(multAndRound(col.R, 255))})
@@ -74,7 +75,6 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 
 		if notFirst {
 			col := renderData[index].Color
-			writer.Write([]byte{uint8(3*n + faces[index].a)})
 
 			v := 0
 			if faces[index].b == 2 {
@@ -83,12 +83,36 @@ func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data)
 				v = 2
 			}
 
-			writer.Write(uint16ToBytes(uint16(current.Points[v].X)))
-			writer.Write(uint16ToBytes(uint16(current.Points[v].Y)))
+			parentPoint := triangles[parent[index]].Points[faces[index].a]
+			diff := coordsDiff(parentPoint, current.Points[v])
+			compressCoords := diff.X <= 127 && diff.X >= -128 && diff.Y <= 127 && diff.Y >= -128
 
-			writer.Write([]byte{uint8(multAndRound(col.R, 255))})
-			writer.Write([]byte{uint8(multAndRound(col.G, 255))})
-			writer.Write([]byte{uint8(multAndRound(col.B, 255))})
+			dR, dG, dB := colorDiff(renderData[parent[index]].Color, col)
+			compressColor := dR <= 31 && dR >= -32 && dG <= 31 && dG >= -32 && dB <= 31 && dB >= -32
+
+			r := uint16(dR + 32)
+			g := uint16(dG + 32)
+			b := uint16(dB + 32)
+			dataByte := uint8(n) | uint8(faces[index].a)<<2 | boolToByte(compressCoords)<<4 | boolToByte(compressColor)<<5 | ((uint8(b)>>4)&3)<<6
+			writer.Write([]byte{dataByte})
+
+			if compressCoords {
+				writer.Write([]byte{byte(diff.X), byte(diff.Y)})
+			} else {
+				p := current.Points[v]
+				binary.Write(writer, binary.LittleEndian, uint16(p.X))
+				binary.Write(writer, binary.LittleEndian, uint16(p.Y))
+			}
+
+			if compressColor {
+				colorData := r | g<<6 | (b&15)<<12
+
+				binary.Write(writer, binary.LittleEndian, colorData)
+			} else {
+				writer.Write([]byte{uint8(multAndRound(col.R, 255))})
+				writer.Write([]byte{uint8(multAndRound(col.G, 255))})
+				writer.Write([]byte{uint8(multAndRound(col.B, 255))})
+			}
 		}
 
 		notFirst = true
@@ -150,11 +174,26 @@ func faceFromSum(sum int) int {
 	}
 	return face
 }
+func boolToByte(b bool) uint8 {
+	if b {
+		return 1
+	}
 
-func uint16ToBytes(num uint16) []byte {
-	bytes := make([]byte, 2)
-	binary.LittleEndian.PutUint16(bytes, num)
-	return bytes
+	return 0
+}
+
+func coordsDiff(a, b geom.Point) geom.Point {
+	return geom.Point{
+		X: b.X - a.X,
+		Y: b.Y - a.Y,
+	}
+}
+
+func colorDiff(a, b color.RGB) (int, int, int) {
+	dR := multAndRound(b.R, 255) - multAndRound(a.R, 255)
+	dG := multAndRound(b.G, 255) - multAndRound(a.G, 255)
+	dB := multAndRound(b.B, 255) - multAndRound(a.B, 255)
+	return dR, dG, dB
 }
 
 func multAndRound(v float64, m int) int {

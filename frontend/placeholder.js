@@ -1,29 +1,41 @@
-window.addEventListener('load', place);
+window.addEventListener('DOMContentLoaded', place);
 
 function place() {
+
+    // Test for search engine crawlers
+    if (/bot|googlebot|crawler|spider|robot|crawling/i.test(navigator.userAgent)) {
+        var images = document.querySelectorAll("img[data-src]");
+
+        for (var i = 0; i < images.length; i++) {
+            images[i].src = images[i].dataset.src;
+        }
+        return;
+    }
+
     // Replace all images with the attribute data-src
     var images = document.querySelectorAll("img[data-src]");
 
     for (var i = 0; i < images.length; i++) {
         let image = images[i];
 
-        var backgroundSize = "contain"
+        // Support different object-fit properties
+        var backgroundSize = "contain";
         switch (window.getComputedStyle(image).objectFit) {
             case "cover":
-                backgroundSize = "cover"
+                backgroundSize = "cover";
                 break
             case "fill":
-                backgroundSize = "100% 100%"
+                backgroundSize = "100% 100%";
                 break
             case "none":
-                backgroundSize = "auto"
+                backgroundSize = "auto";
                 break
         }
         image.style.backgroundPosition = window.getComputedStyle(image).objectPosition;
-        image.style.backgroundSize = backgroundSize
-        image.style.opacity = "0"
-        image.style.backgroundRepeat = "no-repeat"
-        image.style.transition = "background 0.7s, background-position 0s, background-size 0s"
+        image.style.backgroundSize = backgroundSize;
+        image.style.opacity = "0";
+        image.style.backgroundRepeat = "no-repeat";
+        image.style.transition = "background 1s, background-position 0s, background-size 0s";
 
         var xhr = new XMLHttpRequest();
 
@@ -49,25 +61,7 @@ function place() {
                 canvas.height = height;
                 var blank = canvas.toDataURL();
 
-                var ctx = canvas.getContext("2d")
-                ctx.clearRect(0, 0, width, height)
-
-                for (var i = 0; i < triangles.length; i++) {
-                    let triangle = triangles[i].triangle
-                    let color = triangles[i].color
-                    let rgb = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-                    ctx.fillStyle = rgb;
-                    ctx.strokeStyle = rgb;
-                    ctx.lineWidth = 1;
-
-                    ctx.beginPath();
-                    ctx.moveTo(triangle[0][0], triangle[0][1]);
-                    ctx.lineTo(triangle[1][0], triangle[1][1]);
-                    ctx.lineTo(triangle[2][0], triangle[2][1]);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                }
+                renderData(canvas, triangles)
 
                 var imageXhr = new XMLHttpRequest();
                 imageXhr.open("GET", image.dataset.src, true);
@@ -77,23 +71,48 @@ function place() {
                     if (blob) {
                         var reader = new FileReader();
                         reader.onloadend = function () {
-                            image.style.backgroundImage = `url(${reader.result})`
+                            image.style.backgroundImage = `url(${reader.result})`;
                             image.ontransitionend = () => {
-                                image.src = reader.result
-                                image.style.backgroundImage = ''
+                                image.src = reader.result;
+                                image.onload = function () {
+                                    image.style.backgroundImage = '';
+                                }
                             };
                         }
                         reader.readAsDataURL(response.currentTarget.response);
                     }
                 }
-                imageXhr.send()
+                imageXhr.send();
                 image.src = blank;
-                image.style.backgroundImage = `url('${canvas.toDataURL("image/jpeg")}')`
-                image.style.opacity = "1"
+                image.style.backgroundImage = `url('${canvas.toDataURL("image/jpeg")}')`;
+                image.style.opacity = "1";
             }
         };
         xhr.send();
 
+    }
+}
+
+function renderData(canvas, triangles) {
+    var ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (var i = 0; i < triangles.length; i++) {
+        let triangle = triangles[i].triangle;
+        let color = triangles[i].color;
+        let rgb = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+
+        ctx.fillStyle = rgb;
+        ctx.strokeStyle = rgb;
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        ctx.moveTo(triangle[0][0], triangle[0][1]);
+        ctx.lineTo(triangle[1][0], triangle[1][1]);
+        ctx.lineTo(triangle[2][0], triangle[2][1]);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
     }
 }
 
@@ -112,25 +131,54 @@ function parseData(data) {
 
     var current = 0;
 
-    for (var i = 20; i < data.byteLength; i += 8) {
-        let face = data.getUint8(i, true) % 3
+    for (var i = 20; i < data.byteLength;) {
+        let parent = triangles[current];
+
+        let dataByte = data.getUint8(i, true);
+
+        i++;
+        let face = (dataByte >> 2) & 3;
 
         let adjacent = triangles[current].triangle;
 
-        triangles.push({
-            triangle: [
-                adjacent[face],
-                adjacent[(face + 1) % 3],
-                [data.getUint16(i + 1, true), data.getUint16(i + 3, true)],
-            ].sort(function (a, b) {
-                if (a[1] == b[1]) {
-                    return a[0] - b[0];
-                }
+        var vertex;
 
-                return a[1] - b[1];
-            }),
-            color: [data.getUint8(i + 5, true), data.getUint8(i + 6, true), data.getUint8(i + 7, true)],
-            remaining: Math.floor(data.getUint8(i, true) / 3),
+        if ((dataByte >> 4) & 1) {
+            vertex = [parent.triangle[face][0] + data.getInt8(i, true), parent.triangle[face][1] + data.getInt8(i + 1, true)];
+            i += 2;
+        } else {
+            vertex = [data.getUint16(i, true), data.getUint16(i + 2, true)];
+            i += 4;
+        }
+
+        var color;
+
+        if ((dataByte >> 5) & 1) {
+            let colorData = data.getUint16(i, true);
+
+            color = [parent.color[0] + (colorData & 63) - 32, parent.color[1] + ((colorData >> 6) & 63) - 32, parent.color[2] + (((colorData >> 12) & 15) | ((dataByte >> 6) & 3) << 4) - 32];
+            i += 2;
+        } else {
+            color = [data.getUint8(i, true), data.getUint8(i + 1, true), data.getUint8(i + 2, true)];
+            i += 3;
+        }
+
+        let triangle = [
+            adjacent[face],
+            adjacent[(face + 1) % 3],
+            vertex,
+        ].sort(function (a, b) {
+            if (a[1] == b[1]) {
+                return a[0] - b[0];
+            }
+
+            return a[1] - b[1];
+        });
+
+        triangles.push({
+            triangle: triangle,
+            color: color,
+            remaining: dataByte & 3,
         });
 
         triangles[current].remaining--;
@@ -138,5 +186,6 @@ function parseData(data) {
             current++;
         }
     }
-    return triangles
+
+    return triangles;
 }

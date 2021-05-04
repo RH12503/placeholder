@@ -161,7 +161,7 @@ func processImage(imagePath string, numPoints int, timePerImage float64, maxSize
 
 	mutator = mutation.NewGaussianMethod(2./float64(numPoints), 0.3)
 
-	algo := algorithm.NewSimple(pointFactory, 400, 5, evaluatorFactory, mutator)
+	algo := algorithm.NewModifiedGenetic(pointFactory, 400, 5, evaluatorFactory, mutator)
 
 	ti := time.Now()
 
