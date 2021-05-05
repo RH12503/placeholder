@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/RH12503/Triangula/algorithm"
 	"github.com/RH12503/Triangula/algorithm/evaluator"
 	"github.com/RH12503/Triangula/generator"
@@ -37,13 +38,13 @@ func main() {
 				Name:     "time",
 				Usage:    "How many seconds to run the algorithm for each image.",
 				Aliases:  []string{"t"},
-				Required: true,
+				Value: 60,
 			},
 			&cli.UintFlag{
 				Name:     "points",
 				Usage:    "How many points to use in each triangulation.",
 				Aliases:  []string{"p", "pts"},
-				Required: true,
+				Value: 600,
 			},
 			&cli.UintFlag{
 				Name:    "max-size",
@@ -56,6 +57,14 @@ func main() {
 			timePerImage := c.Float64("time")
 			path := c.String("input")
 			maxSize := int(c.Uint("max-size"))
+
+			parameters := fmt.Sprintf("[Points] %v | [Time] %vs", numPoints, timePerImage)
+
+			if maxSize != 0 {
+				parameters += fmt.Sprintf(" | [Max size] %vpx", maxSize)
+			}
+
+			pterm.Info.Println(parameters)
 
 			if !validPath(path) {
 				pterm.Error.WithShowLineNumber(false).Println("Invalid path")
