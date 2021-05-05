@@ -18,6 +18,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"placeholder/tip"
 	"strings"
 	"time"
 )
@@ -181,7 +182,7 @@ func processImage(imagePath string, numPoints int, timePerImage float64, maxSize
 
 	name := strings.TrimSuffix(imagePath, ext)
 
-	if err := SaveFile(name+".tri", algo.Best(), imageData.ToData(imageFile)); err != nil {
+	if err := tip.SaveFile(name+".tri", algo.Best(), imageData.ToData(imageFile)); err != nil {
 		pterm.Error.WithShowLineNumber(false).Printf("Cannot write %v\n", filename)
 		return err
 	}

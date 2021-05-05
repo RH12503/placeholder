@@ -4,3 +4,5 @@
 /*.png
 /*.jpg
 /*.jpeg
+node_modules
+gui/build
