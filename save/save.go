@@ -1,4 +1,4 @@
-package tip
+package save
 
 import (
 	"bufio"
@@ -14,7 +14,7 @@ import (
 	"sort"
 )
 
-func SaveFile(filepath string, points normgeom.NormPointGroup, image image.Data) error {
+func WriteFile(filepath string, points normgeom.NormPointGroup, image image.Data) error {
 
 	w, h := image.Size()
 
