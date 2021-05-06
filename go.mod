@@ -1,4 +1,4 @@
-module placeholder
+module github.com/RH12503/tip-backend
 
 go 1.16
 

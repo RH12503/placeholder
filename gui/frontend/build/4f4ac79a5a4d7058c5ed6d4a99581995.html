@@ -1,0 +1,15 @@
+<div class='logo'></div>
+<div class='container'>
+    <button onClick='window.backend.Counter.Increment()'>
+        Increment Counter
+    </button>
+    <button onClick='window.backend.Counter.Decrement()'>
+        Decrement Counter
+    </button>
+</div>
+<div class='result'>Counter: <span id='counter'></span></div>
+<div class='container'>
+    <input id='newCounter' type="number" value="0"/>
+    <button id='setvalue'>Set Counter Value</button>
+    <button onclick='window.backend.Counter.RandomValue()'>Set to Random Value</button>
+</div>

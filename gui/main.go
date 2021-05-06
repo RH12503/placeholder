@@ -16,11 +16,10 @@ func main() {
   app := wails.CreateApp(&wails.AppConfig{
     Width:  1024,
     Height: 768,
-    Title:  "save",
+    Title:  "tip",
     JS:     js,
     CSS:    css,
-    Colour: "#131313",
   })
-  app.Bind(&Counter{})
+  app.Bind(&Controller{})
   app.Run()
 }
