@@ -18,6 +18,7 @@ github.com/enki/fastprng v0.0.0-20190912035746-b46f877a1a50 h1:rEb10MoloN0R4OXOG
 github.com/enki/fastprng v0.0.0-20190912035746-b46f877a1a50/go.mod h1:fmNBkPdX9WKwCxNL5AdR7/d4eLG+ccEHOmYrgIoBq0c=
 github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
+github.com/fogleman/delaunay v0.0.0-20180910191513-63f09b4c883d h1:TEEc0gLspsm9q0dWZZYiH0blV1MhPQnshLqSoANbxMk=
 github.com/fogleman/delaunay v0.0.0-20180910191513-63f09b4c883d/go.mod h1:Twj6uBC/dSqh5vCcgzy/jO/4QWu9lqPTt1v3WEz68z8=
 github.com/go-playground/colors v1.2.0 h1:0EdjTXKrr2g1L/LQTYtIqabeHpZuGZz1U4osS1T8+5M=
 github.com/go-playground/colors v1.2.0/go.mod h1:miw1R2JIE19cclPxsXqNdzLZsk4DP4iF+m88bRc7kfM=

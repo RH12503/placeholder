@@ -83,6 +83,7 @@ body {
   border: 1px solid rgb(150, 150, 150);
   border-radius: 10px;
   margin-bottom: 20px;
+  overflow: scroll;
 }
 
 #help {
@@ -100,7 +101,7 @@ body {
   align-items: center;
 }
 
-.item {
+.item:first-child {
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
 }
@@ -111,6 +112,10 @@ body {
 
 .item.done {
   border-bottom: 1px solid #48ac62;
+}
+
+.item.error {
+  border-bottom: 1px solid #b44141;
 }
 
 .itemname {
@@ -124,6 +129,10 @@ body {
 
 .item.done>.itemname {
   color: #48ac62;
+}
+
+.item.error>.itemname {
+  color: #b44141;
 }
 
 .itemtime {
@@ -141,6 +150,10 @@ body {
   color: #48ac62;
 }
 
+.item.error>.itemtime {
+  color: #b44141;
+}
+
 .itemcontrols {
   flex: 0;
   display: flex;
@@ -156,6 +169,10 @@ body {
 
 .item.done>.itemcontrols button svg {
   fill: #48ac62;
+}
+
+.item.error>.itemcontrols button svg {
+  fill: #b44141;
 }
 
 .itemcontrols button:hover svg {
@@ -266,7 +283,7 @@ body {
 }
 
 #updatebox {
-  flex: 0 0 85px;
+  flex: 0 0 80px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -274,26 +291,26 @@ body {
   margin-right: auto
 }
 
-#update {
+#start {
   background-color: #48ac62;
   font-size: 12px;
   color: white;
   border: none;
   margin: 0px;
   padding: 8px;
-  padding-left: 11px;
-  padding-right: 11px;
+  padding-left: 12px;
+  padding-right: 12px;
   border-radius: 5px;
   transition: 0.2s all;
   font-family: 'Trebuchet MS';
 }
 
-#update:hover {
+#start:hover {
   background-color: #429c5a;
   cursor: pointer;
 }
 
-#update:active {
+#start:active {
   background-color: #4eb86a;
   cursor: pointer;
 }

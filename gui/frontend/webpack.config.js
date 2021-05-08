@@ -27,6 +27,10 @@ module.exports = {
 	module: {
 		rules: [
 			{
+				test: /\.css$/,
+				use: ["style-loader", "css-loader"]
+			},
+			{
 				test: /\.(png|gif|jpg|woff2?|eot|ttf|otf|svg)(\?.*)?$/i,
 				use: [
 					{
@@ -46,10 +50,6 @@ module.exports = {
 	plugins: [
 		new CopyWebpackPlugin({
 			patterns: [
-				{
-					from: path.resolve(sourceDir, 'main.css'),
-					to: path.resolve(buildDir, 'main.css')
-				},
 				{
 					from: path.resolve(sourceDir, 'index.html'),
 					to: path.resolve(buildDir, 'index.html')

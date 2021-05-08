@@ -1,46 +1,65 @@
 package main
 
 import (
+	"fmt"
 	"github.com/RH12503/Triangula/algorithm"
 	"github.com/RH12503/Triangula/algorithm/evaluator"
 	"github.com/RH12503/Triangula/generator"
 	imageData "github.com/RH12503/Triangula/image"
 	"github.com/RH12503/Triangula/mutation"
 	"github.com/RH12503/Triangula/normgeom"
-	"github.com/RH12503/tip-backend/save"
 	"github.com/disintegration/imaging"
-	"github.com/pterm/pterm"
 	"github.com/wailsapp/wails"
 	"image"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
 type Controller struct {
-	r     *wails.Runtime
+	r *wails.Runtime
 
 	points, maxTime, maxSize int
 
-	paths chan string
+	paths chan itemData
 
 	nextId int
+
+	currentId atomic.Value
+
+	stopCurrent atomic.Value
+
+	running atomic.Value
+
+	remove      []int
+	removeMutex sync.Mutex
 }
 
 func (c *Controller) WailsInit(runtime *wails.Runtime) error {
+
 	c.r = runtime
 
-	c.paths = make(chan string)
+	c.paths = make(chan itemData, 1024)
 
-	go func() {
-		for path := range c.paths {
-			c.r.Events.Emit("newPath", filepath.Base(path), c.nextId)
-			c.nextId++
-		}
-	}()
+	c.running.Store(false)
 
 	return nil
+}
+
+func (c *Controller) RemoveItem(id int) {
+	if id == c.currentId.Load().(int) {
+		c.stopCurrent.Store(true)
+	} else {
+		c.removeMutex.Lock()
+		c.remove = append(c.remove, id)
+		c.removeMutex.Unlock()
+
+		c.r.Events.Emit("remove", id)
+	}
 }
 
 func (c *Controller) FilePressed() {
@@ -51,79 +70,142 @@ func (c *Controller) FilePressed() {
 	}
 
 	c.addPath(path)
+	c.currentId.Store(-1)
 }
 
-func (c *Controller) UpdatePressed(points, maxTime, maxSize int) {
+func (c *Controller) FolderPressed() {
+	path:= c.r.Dialog.SelectDirectory()
+
+	if path == "" {
+		return
+	}
+
+	c.addPath(path)
+	c.currentId.Store(-1)
+}
+
+
+func (c *Controller) StartPressed(points, maxTime, maxSize int) {
 	c.points = points
 	c.maxTime = maxTime
 	c.maxSize = maxSize
+	if !c.running.Load().(bool) && len(c.paths) != 0 {
+		c.running.Store(true)
+		go func() {
+			for info := range c.paths {
+				c.removeMutex.Lock()
+				if len(c.remove) != 0 && c.remove[0] == info.id {
+					c.remove = c.remove[1:]
+					c.removeMutex.Unlock()
+					continue
+				}
+				c.removeMutex.Unlock()
+				c.currentId.Store(info.id)
+				func() {
+					fmt.Println(info.id, info.path)
+					c.r.Events.Emit("working", info.id)
+					file, err := os.Open(info.path)
+
+					if err != nil {
+						c.r.Events.Emit("error", info.id)
+						return
+					}
+
+					imageFile, _, err := image.Decode(file)
+					file.Close()
+
+					resizedImage := imageFile
+
+					if c.maxSize != 0 {
+						dim := imageFile.Bounds().Max
+						if dim.X > dim.Y && dim.X > c.maxSize {
+							resizedImage = imaging.Resize(imageFile, c.maxSize, 0, imaging.Lanczos)
+						} else if dim.Y > dim.X && dim.Y > c.maxSize {
+							resizedImage = imaging.Resize(imageFile, 0, c.maxSize, imaging.Lanczos)
+						}
+					}
+
+					if err != nil {
+						c.r.Events.Emit("error", info.id)
+						return
+					}
+					img := imageData.ToData(resizedImage)
+
+					pointFactory := func() normgeom.NormPointGroup {
+						return generator.RandomGenerator{}.Generate(c.points)
+					}
+
+					evaluatorFactory := func(n int) evaluator.Evaluator {
+						return evaluator.NewParallel(img, 22, 5, n)
+					}
+
+					var mutator mutation.Method
+
+					mutator = mutation.NewGaussianMethod(2./float64(c.points), 0.3)
+
+					algo := algorithm.NewModifiedGenetic(pointFactory, 400, 5, evaluatorFactory, mutator)
+
+					c.stopCurrent.Store(false)
+					ti := time.Now()
+					d := 0.
+					for  !c.stopCurrent.Load().(bool) && (c.maxTime <= 0 || d < float64(c.maxTime)) {
+						algo.Step()
+						d = time.Since(ti).Seconds()
+						c.r.Events.Emit("time", info.id, d)
+					}
+
+					ext := filepath.Ext(info.path)
+
+					name := strings.TrimSuffix(info.path, ext)
+
+					if err := WriteFile(name+".tri", algo.Best(), imageData.ToData(imageFile)); err != nil {
+						c.r.Events.Emit("error", info.id)
+						return
+					}
+					c.r.Events.Emit("done", info.id)
+				}()
+
+				c.currentId.Store(-1)
+
+				if len(c.paths) == 0 {
+					c.running.Store(false)
+					break
+				}
+			}
+		}()
+	}
 }
 
 func (c *Controller) addPath(path string) {
-	c.paths <- path
-}
-
-
-
-func processImage(imagePath string, numPoints int, timePerImage float64, maxSize int) error {
-
-	file, err := os.Open(imagePath)
-
-	if err != nil {
-		return err
+	if !validPath(path) {
+		return
 	}
 
-	imageFile, _, err := image.Decode(file)
-	file.Close()
+	if isDirectory(path) {
+		files, err := ioutil.ReadDir(path)
 
-	resizedImage := imageFile
-
-	if maxSize != 0 {
-		dim := imageFile.Bounds().Max
-		if dim.X > dim.Y && dim.X > maxSize {
-			resizedImage = imaging.Resize(imageFile, maxSize, 0, imaging.Lanczos)
-		} else if dim.Y > dim.X && dim.Y > maxSize {
-			resizedImage = imaging.Resize(imageFile, 0, maxSize, imaging.Lanczos)
+		if err != nil {
+			return
 		}
+		for _, f := range files {
+			ext := filepath.Ext(f.Name())
+			if ext == ".jpg" || ext == ".jpeg" || ext == ".png" {
+				c.r.Events.Emit("newPath", f.Name(), c.nextId)
+				c.paths <- itemData{
+					path: filepath.Join(path, f.Name()),
+					id:   c.nextId,
+				}
+				c.nextId++
+			}
+		}
+	} else {
+		c.r.Events.Emit("newPath", filepath.Base(path), c.nextId)
+		c.paths <- itemData{
+			path: path,
+			id:   c.nextId,
+		}
+		c.nextId++
 	}
-
-	if err != nil {
-		return err
-	}
-	img := imageData.ToData(resizedImage)
-
-	pointFactory := func() normgeom.NormPointGroup {
-		return generator.RandomGenerator{}.Generate(numPoints)
-	}
-
-	evaluatorFactory := func(n int) evaluator.Evaluator {
-		return evaluator.NewParallel(img, 22, 5, n)
-	}
-
-	var mutator mutation.Method
-
-	mutator = mutation.NewGaussianMethod(2./float64(numPoints), 0.3)
-
-	algo := algorithm.NewModifiedGenetic(pointFactory, 400, 5, evaluatorFactory, mutator)
-
-	ti := time.Now()
-
-	for time.Since(ti).Seconds() < timePerImage {
-		algo.Step()
-	}
-
-	ext := filepath.Ext(imagePath)
-
-	filename := strings.TrimSuffix(filepath.Base(imagePath), ext) + ".tri"
-
-	name := strings.TrimSuffix(imagePath, ext)
-
-	save.WriteFile()
-	if err := save.WriteFile(name+".tri", algo.Best(), imageData.ToData(imageFile)); err != nil {
-		pterm.Error.WithShowLineNumber(false).Printf("Cannot write %v\n", filename)
-		return err
-	}
-	return nil
 }
 
 func isDirectory(path string) bool {
@@ -142,4 +224,9 @@ func validPath(path string) bool {
 		return false
 	}
 	return false
+}
+
+type itemData struct {
+	path string
+	id   int
 }

@@ -1,10 +1,20 @@
+/* quicksand-500 - latin */
+@font-face {
+  font-family: 'Quicksand';
+  font-style: normal;
+  font-weight: 500;
+  src: local(''),
+  url('./assets/quicksand-v22-latin-500.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
+  url('./assets/quicksand-v22-latin-500.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+}
+
 html, body {
   width: 100%;
   height: 100%;
   margin: 0;
   background-color: #ffffff;
   color: black;
-  font-family: 'Trebuchet MS';
+  font-family: 'Quicksand';
   font-size: 14px;
 }
 
@@ -52,30 +62,50 @@ body {
 }
 
 #upload {
-  flex: 2;
+  flex: 1;
+  margin: 0px;
+  padding: 0px;
   margin-bottom: 20px;
 }
 
-#select {
-  width: 100%;
+.select {
+  margin: 0px;
+  padding: 0px;
+  display: inline-block;
+  width: 50%;
   height: 100%;
   border: 1px solid rgb(180, 180, 180);
-  border-radius: 10px;
   background-color: transparent;
-  color: rgb(180, 180, 180);
-  font-size: 50px;
   transition: all 0.2s;
+  text-align: center;
   outline: none;
+  font-family: "Quicksand";
 }
 
-#select:hover {
+.select svg {
+  height: 20px;
+  fill: rgb(180, 180, 180);
+}
+
+.select:hover {
   cursor: pointer;
   color: rgb(150, 150, 150);
   border-color: rgb(150, 150, 150);
 }
 
-#select:active {
+.select:active {
   background: #4fba6c34
+}
+
+.select:first-child {
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+.select:last-child {
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+  border-left: none;
 }
 
 #list {
@@ -83,6 +113,7 @@ body {
   border: 1px solid rgb(150, 150, 150);
   border-radius: 10px;
   margin-bottom: 20px;
+  overflow: scroll;
 }
 
 #help {
@@ -100,7 +131,7 @@ body {
   align-items: center;
 }
 
-.item {
+.item:first-child {
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
 }
@@ -111,6 +142,10 @@ body {
 
 .item.done {
   border-bottom: 1px solid #48ac62;
+}
+
+.item.error {
+  border-bottom: 1px solid #b44141;
 }
 
 .itemname {
@@ -124,6 +159,10 @@ body {
 
 .item.done>.itemname {
   color: #48ac62;
+}
+
+.item.error>.itemname {
+  color: #b44141;
 }
 
 .itemtime {
@@ -141,6 +180,10 @@ body {
   color: #48ac62;
 }
 
+.item.error>.itemtime {
+  color: #b44141;
+}
+
 .itemcontrols {
   flex: 0;
   display: flex;
@@ -156,6 +199,10 @@ body {
 
 .item.done>.itemcontrols button svg {
   fill: #48ac62;
+}
+
+.item.error>.itemcontrols button svg {
+  fill: #b44141;
 }
 
 .itemcontrols button:hover svg {
@@ -231,7 +278,7 @@ body {
   position: absolute;
   padding-left: 2px;
   padding-right: 2px;
-  top: -10px;
+  top: -8px;
   left: 3px;
   color: rgb(180, 180, 180);
   background-color: white;
@@ -249,7 +296,7 @@ body {
   text-align: right;
   transition: 0.2s all;
   box-sizing: border-box;
-  font-family: 'Trebuchet MS';
+  font-family: 'Quicksand';
 }
 
 .input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
@@ -266,7 +313,7 @@ body {
 }
 
 #updatebox {
-  flex: 0 0 85px;
+  flex: 0 0 80px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -274,26 +321,26 @@ body {
   margin-right: auto
 }
 
-#update {
+#start {
   background-color: #48ac62;
   font-size: 12px;
   color: white;
   border: none;
   margin: 0px;
-  padding: 8px;
-  padding-left: 11px;
-  padding-right: 11px;
+  padding: 7px;
+  padding-left: 12px;
+  padding-right: 12px;
   border-radius: 5px;
   transition: 0.2s all;
-  font-family: 'Trebuchet MS';
+  font-family: 'Quicksand';
 }
 
-#update:hover {
+#start:hover {
   background-color: #429c5a;
   cursor: pointer;
 }
 
-#update:active {
+#start:active {
   background-color: #4eb86a;
   cursor: pointer;
 }

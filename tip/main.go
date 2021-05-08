@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"github.com/RH12503/Triangula/algorithm"
 	"github.com/RH12503/Triangula/algorithm/evaluator"
 	"github.com/RH12503/Triangula/generator"
@@ -35,16 +37,16 @@ func main() {
 				Required: true,
 			},
 			&cli.Float64Flag{
-				Name:     "time",
-				Usage:    "How many seconds to run the algorithm for each image.",
-				Aliases:  []string{"t"},
-				Value: 60,
+				Name:    "time",
+				Usage:   "How many seconds to run the algorithm for each image.",
+				Aliases: []string{"t"},
+				Value:   60,
 			},
 			&cli.UintFlag{
-				Name:     "points",
-				Usage:    "How many points to use in each triangulation.",
-				Aliases:  []string{"p", "pts"},
-				Value: 600,
+				Name:    "points",
+				Usage:   "How many points to use in each triangulation.",
+				Aliases: []string{"p", "pts"},
+				Value:   600,
 			},
 			&cli.UintFlag{
 				Name:    "max-size",
@@ -90,6 +92,8 @@ func main() {
 					if err == nil {
 						processed++
 						pterm.Success.Printf("Processed %v!\n", filepath.Base(p))
+					} else {
+						pterm.Error.WithShowLineNumber(false).Println(err.Error())
 					}
 					bar.Increment()
 				}
@@ -104,6 +108,8 @@ func main() {
 				err := processImage(path, numPoints, timePerImage, maxSize)
 				if err == nil {
 					pterm.Success.Printf("Processed %v!\n", filepath.Base(path))
+				} else {
+					pterm.Error.WithShowLineNumber(false).Println(err.Error())
 				}
 			}
 
@@ -123,8 +129,7 @@ func processImage(imagePath string, numPoints int, timePerImage float64, maxSize
 	file, err := os.Open(imagePath)
 
 	if err != nil {
-		pterm.Error.WithShowLineNumber(false).Printf("Cannot read %v\n", filepath.Base(imagePath))
-		return err
+		return errors.New(fmt.Sprintf("Cannot read %v\n", filepath.Base(imagePath)))
 	}
 
 	imageFile, _, err := image.Decode(file)
@@ -142,8 +147,7 @@ func processImage(imagePath string, numPoints int, timePerImage float64, maxSize
 	}
 
 	if err != nil {
-		pterm.Error.WithShowLineNumber(false).Printf("Cannot decode %v\n", filepath.Base(imagePath))
-		return err
+		return errors.New(fmt.Sprintf("Cannot decode %v\n", filepath.Base(imagePath)))
 	}
 	img := imageData.ToData(resizedImage)
 
@@ -174,8 +178,7 @@ func processImage(imagePath string, numPoints int, timePerImage float64, maxSize
 	name := strings.TrimSuffix(imagePath, ext)
 
 	if err := save.WriteFile(name+".tri", algo.Best(), imageData.ToData(imageFile)); err != nil {
-		pterm.Error.WithShowLineNumber(false).Printf("Cannot write %v\n", filename)
-		return err
+		errors.New(fmt.Sprintf("Cannot write %v\n", filename))
 	}
 	return nil
 }
