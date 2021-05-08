@@ -16,6 +16,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
+          workdir: ./tip
           args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
