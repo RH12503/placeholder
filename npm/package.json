@@ -1,0 +1,29 @@
+{
+  "name": "tip",
+  "version": "0.0.1",
+  "description": "Triangulated image placeholders",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "postinstall": "go-npm install",
+  "preuninstall": "go-npm uninstall",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RH12503/tip-backend.git"
+  },
+  "author": "RH12503",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/RH12503/tip-backend/issues"
+  },
+  "homepage": "https://github.com/RH12503/tip-backend#readme",
+  "dependencies": {
+    "go-npm": "^0.1.9"
+  },
+  "goBinary": {
+      "name": "command-name",
+      "path": "./bin",
+      "url": "https://github.com/user/my-go-package/releases/download/v{{version}}/myGoPackage_{{version}}_{{platform}}_{{arch}}.tar.gz"
+    }
+}
