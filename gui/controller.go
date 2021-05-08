@@ -8,6 +8,7 @@ import (
 	imageData "github.com/RH12503/Triangula/image"
 	"github.com/RH12503/Triangula/mutation"
 	"github.com/RH12503/Triangula/normgeom"
+	"github.com/RH12503/tip-backend/save"
 	"github.com/disintegration/imaging"
 	"github.com/wailsapp/wails"
 	"image"
@@ -158,7 +159,7 @@ func (c *Controller) StartPressed(points, maxTime, maxSize int) {
 
 					name := strings.TrimSuffix(info.path, ext)
 
-					if err := WriteFile(name+".tri", algo.Best(), imageData.ToData(imageFile)); err != nil {
+					if err := save.WriteFile(name+".tri", algo.Best(), imageData.ToData(imageFile)); err != nil {
 						c.r.Events.Emit("error", info.id)
 						return
 					}
