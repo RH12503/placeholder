@@ -46,6 +46,47 @@ function start() {
         startPressed();
     }
 
+    wails.Events.On("render", data => {
+        let width = data.Width;
+        let height = data.Height;
+
+        updateCanvasSize(width / height);
+        var canvas = document.getElementById("render");
+
+        let cW = canvas.width;
+        let cH = canvas.height;
+        var ctx = canvas.getContext("2d", { alpha: false });
+
+        if (window.devicePixelRatio > 1) {
+            var canvasWidth = canvas.width;
+            var canvasHeight = canvas.height;
+
+            canvas.width = canvasWidth * window.devicePixelRatio;
+            canvas.height = canvasHeight * window.devicePixelRatio;
+
+            canvas.style.width = canvasWidth + "px";
+            canvas.style.height = canvasHeight + "px";
+
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        ctx.globalCompositeOperation = "lighter";
+
+        ctx.clearRect(0, 0, cW, cH);
+
+        for (let tri of data.Data) {
+            let c = tri.Color;
+            let t = tri.Triangle.Points;
+            ctx.fillStyle = `rgb(${Math.round(c.R * 255)}, ${Math.round(c.G * 255)}, ${Math.round(c.B * 255)})`;
+            ctx.beginPath();
+            ctx.moveTo(Math.round(t[0].X * cW), Math.round(t[0].Y * cH));
+            ctx.lineTo(Math.round(t[1].X * cW), Math.round(t[1].Y * cH));
+            ctx.lineTo(Math.round(t[2].X * cW), Math.round(t[2].Y * cH));
+            ctx.closePath();
+            ctx.fill();
+        }
+    });
+
     wails.Events.On("newPath", (path, id) => {
         addItem(path, id);
     });
@@ -74,6 +115,21 @@ function start() {
     wails.Events.On("remove", (id) => {
         document.getElementById(id).remove();
     });
+}
+
+function updateCanvasSize(ratio) {
+    var canvas = document.getElementById("render");
+    var area = document.getElementById("renderContainer");
+
+    var maxWidth = area.offsetWidth;
+    var maxHeight = area.offsetHeight;
+    if (maxWidth / maxHeight > ratio) {
+        canvas.width = maxHeight * ratio;
+        canvas.height = maxHeight;
+    } else {
+        canvas.width = maxWidth;
+        canvas.height = maxWidth / ratio;
+    }
 }
 
 function startPressed() {

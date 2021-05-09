@@ -8,6 +8,8 @@ import (
 	imageData "github.com/RH12503/Triangula/image"
 	"github.com/RH12503/Triangula/mutation"
 	"github.com/RH12503/Triangula/normgeom"
+	"github.com/RH12503/Triangula/render"
+	"github.com/RH12503/Triangula/triangulation"
 	"github.com/RH12503/tip-backend/save"
 	"github.com/disintegration/imaging"
 	"github.com/wailsapp/wails"
@@ -75,7 +77,7 @@ func (c *Controller) FilePressed() {
 }
 
 func (c *Controller) FolderPressed() {
-	path:= c.r.Dialog.SelectDirectory()
+	path := c.r.Dialog.SelectDirectory()
 
 	if path == "" {
 		return
@@ -84,7 +86,6 @@ func (c *Controller) FolderPressed() {
 	c.addPath(path)
 	c.currentId.Store(-1)
 }
-
 
 func (c *Controller) StartPressed(points, maxTime, maxSize int) {
 	c.points = points
@@ -146,10 +147,25 @@ func (c *Controller) StartPressed(points, maxTime, maxSize int) {
 
 					algo := algorithm.NewModifiedGenetic(pointFactory, 400, 5, evaluatorFactory, mutator)
 
+					w, h := img.Size()
+
 					c.stopCurrent.Store(false)
 					ti := time.Now()
 					d := 0.
-					for  !c.stopCurrent.Load().(bool) && (c.maxTime <= 0 || d < float64(c.maxTime)) {
+					next := 0.
+					for !c.stopCurrent.Load().(bool) && (c.maxTime <= 0 || d < float64(c.maxTime)) {
+						if d > next {
+							triangles := triangulation.Triangulate(algo.Best(), w, h)
+							triangleData := render.TrianglesOnImage(triangles, img)
+
+							c.r.Events.Emit("render", RenderData{
+								Width:  w,
+								Height: h,
+								Data:   triangleData,
+							})
+							next = d + 1
+						}
+
 						algo.Step()
 						d = time.Since(ti).Seconds()
 						c.r.Events.Emit("time", info.id, d)
@@ -225,6 +241,11 @@ func validPath(path string) bool {
 		return false
 	}
 	return false
+}
+
+type RenderData struct {
+	Width, Height int
+	Data          []render.TriangleData
 }
 
 type itemData struct {
