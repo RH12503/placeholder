@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/RH12503/Triangula/algorithm"
 	"github.com/RH12503/Triangula/algorithm/evaluator"
 	"github.com/RH12503/Triangula/generator"
@@ -57,9 +56,11 @@ func (c *Controller) RemoveItem(id int) {
 	if id == c.currentId.Load().(int) {
 		c.stopCurrent.Store(true)
 	} else {
-		c.removeMutex.Lock()
-		c.remove = append(c.remove, id)
-		c.removeMutex.Unlock()
+		if id > c.currentId.Load().(int) {
+			c.removeMutex.Lock()
+			c.remove = append(c.remove, id)
+			c.removeMutex.Unlock()
+		}
 
 		c.r.Events.Emit("remove", id)
 	}
@@ -104,7 +105,6 @@ func (c *Controller) StartPressed(points, maxTime, maxSize int) {
 				c.removeMutex.Unlock()
 				c.currentId.Store(info.id)
 				func() {
-					fmt.Println(info.id, info.path)
 					c.r.Events.Emit("working", info.id)
 					file, err := os.Open(info.path)
 

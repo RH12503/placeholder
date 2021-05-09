@@ -23,14 +23,14 @@ function start() {
         let label = inputGroup.getElementsByTagName("label")[0];
 
         input.addEventListener("focus", function (e) {
-            input.style.color = "#48ac62";
-            label.style.color = "#48ac62";
+            input.style.color = "white";
+            label.style.color = "white";
             inputGroup.style.borderColor = "#48ac62";
         });
         input.addEventListener("blur", function (e) {
-            input.style.color = "rgb(180, 180, 180)";
-            label.style.color = "rgb(180, 180, 180)";
-            inputGroup.style.borderColor = "rgb(180, 180, 180)";
+            input.style.color = "rgb(160, 160, 160)";
+            label.style.color = "rgb(160, 160, 160)";
+            inputGroup.style.borderColor = "rgb(160, 160, 160)";
         });
     }
     let select = document.getElementsByClassName("select");
