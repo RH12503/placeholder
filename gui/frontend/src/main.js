@@ -115,6 +115,14 @@ function start() {
     wails.Events.On("remove", (id) => {
         document.getElementById(id).remove();
     });
+
+    wails.Events.On("running", () => {
+        document.getElementById("start").innerHTML = "Stop"
+    });
+
+    wails.Events.On("stopped", () => {
+        document.getElementById("start").innerHTML = "Start"
+    });
 }
 
 function updateCanvasSize(ratio) {

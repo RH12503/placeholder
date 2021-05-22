@@ -7,12 +7,17 @@
     "build": "npx webpack"
   },
   "dependencies": {
+    "@babel/polyfill": "^7.12.1",
+    "@wailsapp/runtime": "^1.0.10",
     "core-js": "^3.6.4",
-    "regenerator-runtime": "^0.13.3",
-    "@wailsapp/runtime": "^1.0.10"
+    "regenerator-runtime": "^0.13.3"
   },
   "devDependencies": {
+    "@babel/core": "^7.14.3",
+    "@babel/preset-env": "^7.14.2",
+    "@babel/register": "^7.13.16",
     "babel-eslint": "^10.1.0",
+    "babel-loader": "^8.2.2",
     "copy-webpack-plugin": "^6.0.2",
     "css-loader": "^5.2.4",
     "eslint": "^6.8.0",
